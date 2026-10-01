@@ -1,15 +1,9 @@
 """
 Admin Menu
-Author: Dana
-Week 5: UI Design Only
+Dana
 
 This page opens from the Admin button (admin users only).
-It contains:
-    - Event Record button
-    - Mail button
-    - Table for calendar records
-    - Preferences — Return to Admin Screen button
-    - Exit button
+
 """
 
 from PyQt6.QtWidgets import (

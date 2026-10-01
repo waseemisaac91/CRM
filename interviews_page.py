@@ -1,14 +1,9 @@
 """
 Interviews Page
-Author: Dana
-Week 5: UI Design Only
+ Dana
 
 This page opens from the Interviews button.
-It contains:
-    - Search input + Search button
-    - Project Sent button
-    - Project Received button
-    - Return to Preferences Screen button
+
 """
 
 from PyQt6.QtWidgets import (
