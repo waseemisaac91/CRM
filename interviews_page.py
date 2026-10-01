@@ -2,8 +2,6 @@
 Interviews Page
  Dana
 
-This page opens from the Interviews button.
-
 """
 
 from PyQt6.QtWidgets import (

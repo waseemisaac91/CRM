@@ -2,8 +2,7 @@
 Admin Menu
 Dana
 
-This page opens from the Admin button (admin users only).
-
+ (admin users only).
 """
 
 from PyQt6.QtWidgets import (
