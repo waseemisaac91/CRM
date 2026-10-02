@@ -115,6 +115,6 @@ class AdminMenu(QWidget):
     def go_back(self):
         """Return to the Admin Preferences screen."""
         from preferences_admin import PreferencesAdmin
-        self.window = PreferencesAdmin()
-        self.window.show()
+        self.next_window = PreferencesAdmin()
+        self.next_window.show()
         self.close()

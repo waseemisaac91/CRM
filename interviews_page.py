@@ -107,9 +107,9 @@ class InterviewsPage(QWidget):
         """Return to the correct Preferences screen."""
         if self.is_admin:
             from preferences_admin import PreferencesAdmin
-            self.window = PreferencesAdmin()
+            self.next_window = PreferencesAdmin()
         else:
             from preferences_menu import PreferencesMenu
-            self.window = PreferencesMenu()
-        self.window.show()
+            self.next_window = PreferencesMenu()
+        self.next_window.show()
         self.close()

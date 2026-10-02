@@ -81,18 +81,18 @@ class PreferencesMenu(QWidget):
 
     def open_applications(self):
         from applications_page import ApplicationsPage
-        self.window = ApplicationsPage(is_admin=False)
-        self.window.show()
+        self.next_window = ApplicationsPage(is_admin=False)
+        self.next_window.show()
         self.close()
 
     def open_mentor(self):
         from mentor_interview_page import MentorInterviewPage
-        self.window = MentorInterviewPage()
-        self.window.show()
+        self.next_window = MentorInterviewPage(is_admin=False)
+        self.next_window.show()
         self.close()
 
     def open_interviews(self):
         from interviews_page import InterviewsPage
-        self.window = InterviewsPage()
-        self.window.show()
+        self.next_window = InterviewsPage(is_admin=False)
+        self.next_window.show()
         self.close()
