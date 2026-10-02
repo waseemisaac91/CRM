@@ -133,24 +133,24 @@ class PreferencesAdmin(QWidget):
     # --------------------------------------------------
     def open_applications(self):
         from applications_page import ApplicationsPage
-        self.window = ApplicationsPage(is_admin=True)
-        self.window.show()
+        self.next_window = ApplicationsPage(is_admin=True)
+        self.next_window.show()
         self.close()
 
     def open_mentor(self):
         from mentor_interview_page import MentorInterviewPage
-        self.window = MentorInterviewPage()
-        self.window.show()
+        self.next_window = MentorInterviewPage(is_admin=True)
+        self.next_window.show()
         self.close()
 
     def open_interviews(self):
         from interviews_page import InterviewsPage
-        self.window = InterviewsPage()
-        self.window.show()
+        self.next_window = InterviewsPage(is_admin=True)
+        self.next_window.show()
         self.close()
 
     def open_admin(self):
         from admin_menu import AdminMenu
-        self.window = AdminMenu()
-        self.window.show()
+        self.next_window = AdminMenu()
+        self.next_window.show()
         self.close()
