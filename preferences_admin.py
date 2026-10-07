@@ -1,135 +1,34 @@
 """
-Preferences Admin Menu - Admin user menu.
-waseem 
+Preferences Admin Menu
+Author: Waseem
 
-This window opens after login when the user is an admin.
-It contains:
-    - Applications button      → Applications Page
-    - Mentor Interview button  → Mentor Interview Page
-    - Interviews button        → Interviews Page
-    - Admin button             → Admin Menu
-    - Close button             → Exit application
+Loads admin_preferences.ui and wires up all navigation buttons.
 """
 
-from PyQt6.QtWidgets import (
-    QWidget, QLabel, QPushButton, QVBoxLayout
-)
+from PyQt6.QtWidgets import QWidget, QApplication
 from PyQt6.QtCore import Qt
+
+from admin_preferences import Ui_AdminPreferences
 
 
 class PreferencesAdmin(QWidget):
-    """Menu for admin users."""
+    """Admin Preference Menu — modern UI."""
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CRM - Preferences (Admin)")
-        self.setGeometry(400, 200, 450, 480)
-        self.init_ui()
-        self.apply_style()
+        self.ui = Ui_AdminPreferences()
+        self.ui.setupUi(self)
+
+        # ---------- Connect signals ----------
+        self.ui.btnApplications.clicked.connect(self.open_applications)
+        self.ui.btnMentorInterview.clicked.connect(self.open_mentor)
+        self.ui.btnInterviews.clicked.connect(self.open_interviews)
+        self.ui.btnAdmin.clicked.connect(self.open_admin_menu)
+        self.ui.btnMainMenu.clicked.connect(self.back_to_login)
+        self.ui.btnExit.clicked.connect(self.close)
 
     # --------------------------------------------------
-    # UI construction
-    # --------------------------------------------------
-    def init_ui(self):
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(40, 40, 40, 40)
-
-        # Title with admin badge
-        title = QLabel("⚙️ Preferences — Admin 🛡️")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setObjectName("title")
-        layout.addWidget(title)
-
-        # Subtitle to distinguish from normal Preferences
-        subtitle = QLabel("You are logged in as an administrator")
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setObjectName("subtitle")
-        layout.addWidget(subtitle)
-
-        layout.addSpacing(10)
-
-        # Navigation buttons (same 3 as regular Preferences)
-        self.apps_btn = QPushButton("📄  Applications")
-        self.apps_btn.clicked.connect(self.open_applications)
-
-        self.mentor_btn = QPushButton("🎓  Mentor Interview")
-        self.mentor_btn.clicked.connect(self.open_mentor)
-
-        self.interviews_btn = QPushButton("📋  Interviews")
-        self.interviews_btn.clicked.connect(self.open_interviews)
-
-        # Admin-specific button
-        self.admin_btn = QPushButton("🛡️  Admin Menu")
-        self.admin_btn.setObjectName("adminBtn")
-        self.admin_btn.clicked.connect(self.open_admin)
-
-        layout.addWidget(self.apps_btn)
-        layout.addWidget(self.mentor_btn)
-        layout.addWidget(self.interviews_btn)
-        layout.addWidget(self.admin_btn)
-
-        layout.addSpacing(10)
-
-        # Close button
-        self.close_btn = QPushButton("❌  Close")
-        self.close_btn.setObjectName("closeBtn")
-        self.close_btn.clicked.connect(self.close)
-        layout.addWidget(self.close_btn)
-
-        self.setLayout(layout)
-
-    # --------------------------------------------------
-    # Styling (Orange accent = admin view)
-    # --------------------------------------------------
-    def apply_style(self):
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #2a2a3e;
-                color: #ffffff;
-                font-family: Arial, sans-serif;
-                font-size: 14px;
-            }
-            QLabel#title {
-                font-size: 22px;
-                font-weight: bold;
-                color: #FF9800;
-                padding-bottom: 4px;
-            }
-            QLabel#subtitle {
-                font-size: 12px;
-                color: #b0b0c0;
-                font-style: italic;
-                padding-bottom: 6px;
-            }
-            QPushButton {
-                padding: 12px;
-                border-radius: 8px;
-                background-color: #2196F3;
-                color: white;
-                font-weight: bold;
-                border: none;
-                text-align: left;
-            }
-            QPushButton:hover  { background-color: #1976D2; }
-            QPushButton:pressed { background-color: #1565C0; }
-
-            /* Admin button — distinct orange */
-            QPushButton#adminBtn {
-                background-color: #FF9800;
-            }
-            QPushButton#adminBtn:hover  { background-color: #F57C00; }
-            QPushButton#adminBtn:pressed { background-color: #EF6C00; }
-
-            /* Close button — grey */
-            QPushButton#closeBtn {
-                background-color: #555;
-            }
-            QPushButton#closeBtn:hover { background-color: #666; }
-        """)
-
-    # --------------------------------------------------
-    # Navigation handlers
+    # Navigation
     # --------------------------------------------------
     def open_applications(self):
         from applications_page import ApplicationsPage
@@ -149,8 +48,23 @@ class PreferencesAdmin(QWidget):
         self.next_window.show()
         self.close()
 
-    def open_admin(self):
+    def open_admin_menu(self):
         from admin_menu import AdminMenu
         self.next_window = AdminMenu()
         self.next_window.show()
         self.close()
+
+    def back_to_login(self):
+        from login_window import LoginWindow
+        self.next_window = LoginWindow()
+        self.next_window.show()
+        self.close()
+
+
+if __name__ == "__main__":
+    import sys
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    w = PreferencesAdmin()
+    w.show()
+    sys.exit(app.exec())

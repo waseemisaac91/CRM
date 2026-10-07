@@ -10,7 +10,7 @@ class ApplicationsPage(QtWidgets.QWidget):
         self.is_admin = is_admin  # to know where to return
 
         # Load UI (path relative to this file, not the working directory)
-        uic.loadUi(os.path.join(BASE_DIR, "applications_page.ui"), self)
+        uic.loadUi(os.path.join(BASE_DIR,"ui", "applications_page.ui"), self)
 
         # Connect buttons
         self.searchButton.clicked.connect(self.search_applications)

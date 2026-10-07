@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>900</width>
-    <height>650</height>
+    <height>660</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -93,10 +93,7 @@ QPushButton#returnButton:pressed {
 }</string>
      </property>
      <property name="frameShape">
-      <enum>QFrame::Shape::StyledPanel</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Shadow::Raised</enum>
+      <enum>QFrame::NoFrame</enum>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,15,0">
       <item>
@@ -104,17 +101,15 @@ QPushButton#returnButton:pressed {
         <property name="font">
          <font>
           <pointsize>22</pointsize>
+          <weight>75</weight>
           <bold>true</bold>
          </font>
         </property>
         <property name="layoutDirection">
-         <enum>Qt::LayoutDirection::LeftToRight</enum>
+         <enum>Qt::LeftToRight</enum>
         </property>
         <property name="text">
          <string>Applications</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -190,6 +185,11 @@ QPushButton#returnButton:pressed {
         <attribute name="horizontalHeaderStretchLastSection">
          <bool>true</bool>
         </attribute>
+        <row>
+         <property name="text">
+          <string>1</string>
+         </property>
+        </row>
         <column>
          <property name="text">
           <string>Name</string>
@@ -225,6 +225,41 @@ QPushButton#returnButton:pressed {
           <string>Notes</string>
          </property>
         </column>
+        <item row="0" column="0">
+         <property name="text">
+          <string>waseem</string>
+         </property>
+        </item>
+        <item row="0" column="1">
+         <property name="text">
+          <string>waseem.isaac.2016@gmasil.com</string>
+         </property>
+        </item>
+        <item row="0" column="2">
+         <property name="text">
+          <string>app1</string>
+         </property>
+        </item>
+        <item row="0" column="3">
+         <property name="text">
+          <string>pending</string>
+         </property>
+        </item>
+        <item row="0" column="4">
+         <property name="text">
+          <string>m1</string>
+         </property>
+        </item>
+        <item row="0" column="5">
+         <property name="text">
+          <string>04-10-2026</string>
+         </property>
+        </item>
+        <item row="0" column="6">
+         <property name="text">
+          <string>notes--1</string>
+         </property>
+        </item>
        </widget>
       </item>
       <item>

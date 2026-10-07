@@ -1,136 +1,173 @@
 """
-Login Window - Starting point of the app.
+Login Window - Uses login.ui (Qt Designer)
 Author: Waseem
+
+Flow:
+    - Username + Password entered
+    - Show password toggle works
+    - Login validates against Google Drive Users file
+    - Admin  -> Preferences Admin
+    - User   -> Preferences Menu
+    - Close  -> Exit application
 """
 
-from PyQt6.QtWidgets import (
-    QWidget, QLabel, QLineEdit, QPushButton,
-    QVBoxLayout, QMessageBox
-)
+from PyQt6.QtWidgets import QWidget, QApplication
 from PyQt6.QtCore import Qt
-from preferences_menu import PreferencesMenu
-from preferences_admin import PreferencesAdmin
+
+from login import Ui_LoginWindow
+
+from services.google_drive_service import authenticate
+from theme import LOGIN_QSS, center
 
 
 class LoginWindow(QWidget):
-    """Custom login page."""
+    """Modern login window loaded from login.ui."""
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CRM - Login")
-        self.setGeometry(400, 200, 420, 360)
-        self.init_ui()
-        self.apply_style()
+        self.ui = Ui_LoginWindow()
+        self.ui.setupUi(self)
+        # Qt keeps the sheet that setupUi() installed; clear it first so the
+        # shared design system fully replaces it.
+        self.setStyleSheet("")
+        self.setStyleSheet(LOGIN_QSS)
+        self.ui.lblForgot.setText("Forgot your password? Contact your administrator.")
+        self.ui.lblForgot.setCursor(Qt.CursorShape.ArrowCursor)
+        self.resize(440, 640)
+        center(self)
 
-    def init_ui(self):
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(40, 40, 40, 40)
+        # ---------- Ensure error label is visible ----------
+        self.ui.lblError.setVisible(True)
+        self.ui.lblError.setMinimumHeight(28)
+        self.ui.lblError.setText("")
+        self.ui.lblError.setWordWrap(True)
+        self.ui.lblError.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Title
-        title = QLabel("🔐 CRM Login")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setObjectName("title")
-        layout.addWidget(title)
+        # ---------- Connect signals ----------
+        self.ui.btnLogin.clicked.connect(self.handle_login)
+        self.ui.btnExit.clicked.connect(self.close)
+        self.ui.chkShow.toggled.connect(self.toggle_password)
 
-        # Username
-        layout.addWidget(QLabel("Username:"))
-        self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Enter your username")
-        layout.addWidget(self.username_input)
+        # Enter key submits
+        self.ui.txtUsername.returnPressed.connect(
+            lambda: self.ui.txtPassword.setFocus()
+        )
+        self.ui.txtPassword.returnPressed.connect(self.handle_login)
 
-        # Password
-        layout.addWidget(QLabel("Password:"))
-        self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("Enter your password")
-        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(self.password_input)
+        # Clear old errors when typing
+        self.ui.txtUsername.textChanged.connect(self.clear_error)
+        self.ui.txtPassword.textChanged.connect(self.clear_error)
 
-        # Warning label (empty for now)
-        self.warning_label = QLabel("")
-        self.warning_label.setObjectName("warning")
-        self.warning_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self.warning_label)
+    # --------------------------------------------------
+    # Show / Hide password
+    # --------------------------------------------------
+    def toggle_password(self, checked: bool):
+        mode = (
+            self.ui.txtPassword.EchoMode.Normal
+            if checked
+            else self.ui.txtPassword.EchoMode.Password
+        )
+        self.ui.txtPassword.setEchoMode(mode)
+        self.ui.txtPassword.setFocus()
 
-        # Login button
-        self.login_btn = QPushButton("Login")
-        self.login_btn.clicked.connect(self.handle_login)
-        layout.addWidget(self.login_btn)
+    # --------------------------------------------------
+    # Helpers — visible error / success messages
+    # --------------------------------------------------
+    def clear_error(self):
+        """Clear the message when the user types."""
+        self.ui.lblError.setText("")
+        self.ui.lblError.setStyleSheet("")   # reset style
 
-        # Close button
-        self.close_btn = QPushButton("Close")
-        self.close_btn.setObjectName("closeBtn")
-        self.close_btn.clicked.connect(self.close)
-        layout.addWidget(self.close_btn)
+    def show_error(self, msg: str):
+        """Display a red error message — ALWAYS visible."""
+        self.ui.lblError.setStyleSheet(
+            "color: #f87171;"
+            "background-color: rgba(248, 113, 113, 0.14);"
+            "font-size: 13px;"
+            "font-weight: bold;"
+            "border-radius: 6px;"
+            "padding: 6px;"
+        )
+        self.ui.lblError.setText(f"❌ {msg}")
+        self.ui.lblError.setVisible(True)
+        self.ui.lblError.adjustSize()
+        QApplication.processEvents()
 
-        self.setLayout(layout)
+    def show_success(self, msg: str):
+        """Display a green success message."""
+        self.ui.lblError.setStyleSheet(
+            "color: #34d399;"
+            "background-color: rgba(52, 211, 153, 0.14);"
+            "font-size: 13px;"
+            "font-weight: bold;"
+            "border-radius: 6px;"
+            "padding: 6px;"
+        )
+        self.ui.lblError.setText(f"✅ {msg}")
+        self.ui.lblError.setVisible(True)
+        self.ui.lblError.adjustSize()
+        QApplication.processEvents()
 
-    def apply_style(self):
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #1e1e2e;
-                color: #ffffff;
-                font-family: Arial, sans-serif;
-                font-size: 14px;
-            }
-            QLabel#title {
-                font-size: 22px;
-                font-weight: bold;
-                color: #4CAF50;
-                padding-bottom: 10px;
-            }
-            QLabel#warning {
-                color: #f44336;
-                font-weight: bold;
-            }
-            QLineEdit {
-                padding: 10px;
-                border-radius: 8px;
-                background-color: #2e2e3e;
-                border: 1px solid #444;
-                color: #fff;
-            }
-            QLineEdit:focus {
-                border: 1px solid #4CAF50;
-            }
-            QPushButton {
-                padding: 12px;
-                border-radius: 8px;
-                background-color: #4CAF50;
-                color: white;
-                font-weight: bold;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QPushButton:pressed {
-                background-color: #3d8b40;
-            }
-            QPushButton#closeBtn {
-                background-color: #555;
-            }
-            QPushButton#closeBtn:hover {
-                background-color: #666;
-            }
-        """)
+    def set_loading(self, loading: bool):
+        """Disable/enable inputs while checking."""
+        self.ui.btnLogin.setEnabled(not loading)
+        self.ui.txtUsername.setEnabled(not loading)
+        self.ui.txtPassword.setEnabled(not loading)
+        self.ui.btnLogin.setText("⏳ Checking..." if loading else "LOGIN")
+        QApplication.processEvents()
 
+    # --------------------------------------------------
+    # Login handler
+    # --------------------------------------------------
     def handle_login(self):
-        """Navigate to Preferences. Login check comes later."""
-        username = self.username_input.text().strip()
-        password = self.password_input.text().strip()
+        username = self.ui.txtUsername.text().strip()
+        password = self.ui.txtPassword.text().strip()
 
-        # Placeholder logic — no real auth yet
-        if not username or not password:
-            self.warning_label.setText("⚠️ Please enter username and password.")
+        # ---------- 1. Empty fields ----------
+        if not username and not password:
+            self.show_error("Please enter your username and password.")
+            self.ui.txtUsername.setFocus()
             return
 
-        # Decide which preferences window to open (hardcoded for now)
-        # For testing: any user with "admin" in the name → admin menu
-        if "admin" in username.lower():
-            self.prefs = PreferencesAdmin()
-        else:
-            self.prefs = PreferencesMenu()
+        if not username:
+            self.show_error("Please enter your username.")
+            self.ui.txtUsername.setFocus()
+            return
 
-        self.prefs.show()
+        if not password:
+            self.show_error("Please enter your password.")
+            self.ui.txtPassword.setFocus()
+            return
+
+        # ---------- 2. Loading ----------
+        self.set_loading(True)
+
+        # ---------- 3. Authenticate ----------
+        try:
+            success, role, message = authenticate(username, password)
+        except Exception as e:
+            self.set_loading(False)
+            self.show_error(f"Connection error: {e}")
+            return
+
+        self.set_loading(False)
+
+        # ---------- 4. Wrong credentials ----------
+        if not success:
+            self.show_error( "Your username or password is incorrect.")
+           
+            return
+
+        # ---------- 5. Success ----------
+        self.show_success(message or "Login successful!")
+
+        # Route to correct menu
+        if role == "admin":
+            from preferences_admin import PreferencesAdmin
+            self.next_window = PreferencesAdmin()
+        else:
+            from preferences_menu import PreferencesMenu
+            self.next_window = PreferencesMenu()
+
+        self.next_window.show()
         self.close()

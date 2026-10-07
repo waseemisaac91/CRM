@@ -1,120 +1,157 @@
 """
 Admin Menu
-Dana
-
- (admin users only).
+Author: Waseem (logic) - restyled with the shared theme.
+Google Calendar events + e-mail to the participants of the selected event.
 """
 
-from PyQt6.QtWidgets import (
-    QWidget, QLabel, QPushButton,
-    QVBoxLayout, QTableWidget
-)
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QApplication, QHBoxLayout, QMessageBox, QTableWidget, QVBoxLayout, QWidget,
+)
+
+from services.google_calendar_service import fetch_events
+from services.email_service import send_event_emails
+from theme import (
+    apply_theme, center, make_button, make_card, make_status, page_header,
+    populate, set_status, style_table,
+)
+
+HEADERS = ["Event ID", "Title", "Date", "Time", "Participants"]
 
 
 class AdminMenu(QWidget):
-    """Admin menu — UI only."""
-
     def __init__(self):
         super().__init__()
+        self.events = []
+        apply_theme(self)
         self.setWindowTitle("CRM - Admin Menu")
-        self.setGeometry(300, 150, 750, 560)
+        self.resize(1120, 700)
+        center(self)
         self.init_ui()
-        self.apply_style()
+        self.load_events()   # auto-load on open
 
-    # --------------------------------------------------
-    # UI construction
     # --------------------------------------------------
     def init_ui(self):
-        layout = QVBoxLayout()
-        layout.setSpacing(12)
-        layout.setContentsMargins(25, 25, 25, 25)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(30, 26, 30, 22)
+        root.setSpacing(16)
+        root.addWidget(page_header(
+            "🛡️", "Admin Menu", "Google Calendar events and participant e-mails",
+            "ADMIN", True))
 
-        # Title
-        title = QLabel("🛡️ Admin Menu")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setObjectName("title")
-        layout.addWidget(title)
+        toolbar, tl = make_card()
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        self.event_btn = make_button("📅  Event Record", "secondary", self.load_events)
+        self.mail_btn = make_button("✉️  Send Emails to Participants", "primary", self.send_emails)
+        row.addWidget(self.event_btn)
+        row.addWidget(self.mail_btn)
+        row.addStretch()
+        tl.addLayout(row)
+        self.info = make_status()
+        tl.addWidget(self.info)
+        root.addWidget(toolbar)
 
-        # Action buttons
-        self.event_btn = QPushButton("📅 Event Record")
-        self.mail_btn = QPushButton("✉️ Mail")
-        layout.addWidget(self.event_btn)
-        layout.addWidget(self.mail_btn)
+        self.table = QTableWidget(0, len(HEADERS))
+        style_table(self.table)
+        self.table.itemSelectionChanged.connect(self.on_row_selected)
+        root.addWidget(self.table, 1)
 
-        # Table for calendar records
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(
-            ["Event", "Date", "Participants", "Status"]
+        footer = QHBoxLayout()
+        footer.addWidget(make_button("←  Preferences — Return to Admin Screen", "secondary", self.go_back))
+        footer.addStretch()
+        footer.addWidget(make_button("Exit", "danger", self.close))
+        root.addLayout(footer)
+
+    # --------------------------------------------------
+    # Load events from Google Calendar
+    # --------------------------------------------------
+    def load_events(self):
+        set_status(self.info, "⏳  Fetching events from Google Calendar...")
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        QApplication.processEvents()
+        try:
+            self.events = fetch_events()
+        except Exception as e:
+            self.events = []
+            populate(self.table, HEADERS, [])
+            set_status(self.info, f"⚠  Failed to load events: {e}", True)
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+
+        rows = [{
+            "Event ID": ev["id"], "Title": ev["title"],
+            "Date": ev["date"], "Time": ev["time"],
+            "Participants": ", ".join(ev["participants"]),
+        } for ev in self.events]
+        populate(self.table, HEADERS, rows)
+        set_status(self.info, f"✅  Loaded {len(self.events)} event(s). "
+                              "Select one to e-mail its participants.")
+
+    # --------------------------------------------------
+    # Row selection
+    # --------------------------------------------------
+    def on_row_selected(self):
+        row = self.table.currentRow()
+        if row < 0 or row >= len(self.events):
+            return
+        ev = self.events[row]
+        set_status(self.info,
+                   f"📍  {ev['title']} — {ev['date']} {ev['time']} — "
+                   f"{len(ev['participants'])} participant(s)")
+
+    # --------------------------------------------------
+    # Send emails
+    # --------------------------------------------------
+    def send_emails(self):
+        row = self.table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "No event", "Select an event first.")
+            return
+
+        ev = self.events[row]
+        if not ev["participants"]:
+            QMessageBox.information(self, "No recipients",
+                                    "This event has no participants.")
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Send Emails",
+            f"Send emails to {len(ev['participants'])} participant(s) "
+            f"of '{ev['title']}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
-        self.table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.table)
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
 
-        # Return to Admin preferences
-        self.return_btn = QPushButton("⬅️ Preferences — Return to Admin Screen")
-        self.return_btn.setObjectName("returnBtn")
-        self.return_btn.clicked.connect(self.go_back)
-        layout.addWidget(self.return_btn)
-
-        # Exit button
-        self.exit_btn = QPushButton("❌ Exit")
-        self.exit_btn.setObjectName("exitBtn")
-        self.exit_btn.clicked.connect(self.close)
-        layout.addWidget(self.exit_btn)
-
-        self.setLayout(layout)
-
-    # --------------------------------------------------
-    # Styling (Red accent — admin view)
-    # --------------------------------------------------
-    def apply_style(self):
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #2e1e1e;
-                color: #ffffff;
-                font-family: Arial, sans-serif;
-                font-size: 13px;
-            }
-            QLabel#title {
-                font-size: 22px;
-                font-weight: bold;
-                color: #F44336;
-                padding-bottom: 8px;
-            }
-            QPushButton {
-                padding: 10px;
-                border-radius: 6px;
-                background-color: #F44336;
-                color: white;
-                font-weight: bold;
-                border: none;
-            }
-            QPushButton:hover { background-color: #D32F2F; }
-            QPushButton:pressed { background-color: #B71C1C; }
-            QPushButton#returnBtn { background-color: #607D8B; }
-            QPushButton#returnBtn:hover { background-color: #455A64; }
-            QPushButton#exitBtn { background-color: #333; }
-            QPushButton#exitBtn:hover { background-color: #444; }
-            QTableWidget {
-                background-color: #3e2e2e;
-                color: #fff;
-                gridline-color: #555;
-                border-radius: 6px;
-            }
-            QHeaderView::section {
-                background-color: #F44336;
-                color: white;
-                padding: 8px;
-                border: none;
-            }
-        """)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            results = send_event_emails(ev, dry_run=False)  # True = print only
+        finally:
+            QApplication.restoreOverrideCursor()
+        report = "\n".join(
+            f"{'✅' if ok else '❌'} {email}" for email, ok in results
+        )
+        QMessageBox.information(
+            self, "Email Report", f"Emails for '{ev['title']}':\n\n{report}"
+        )
 
     # --------------------------------------------------
     # Navigation
     # --------------------------------------------------
     def go_back(self):
-        """Return to the Admin Preferences screen."""
         from preferences_admin import PreferencesAdmin
         self.next_window = PreferencesAdmin()
         self.next_window.show()
         self.close()
+
+
+if __name__ == "__main__":
+    import sys
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")
+    w = AdminMenu()
+    w.show()
+    sys.exit(app.exec())

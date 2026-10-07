@@ -1,64 +1,121 @@
+"""
+Mentor Interview Page
+Author: Dana
+UI loaded from ui/mentor_interview_page.ui
+Search filters the loaded rows instantly (names STARTING with typed letters).
+"""
+
 import os
-from PyQt6 import QtWidgets, uic
+from PyQt6 import uic
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QTableWidgetItem,
+)
+
+from services.data_service import (
+    get_all_conversations, get_conversations_by_recommendation,
+    get_last_error, name_matches,
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+COLS = [
+    "Date", "VIT Group", "Candidate Name", "Mentor Name",
+    "Score", "Recommendation", "Secondary Score", "Notes",
+]
+NAME_COL = "Candidate Name"
 
-class MentorInterviewPage(QtWidgets.QWidget):
+
+class MentorInterviewPage(QWidget):
     def __init__(self, is_admin=False):
         super().__init__()
-        self.is_admin = is_admin  # to know where to return
+        self.is_admin = is_admin
+        self.rows = []
 
-        # Load UI (path relative to this file, not the working directory)
-        uic.loadUi(os.path.join(BASE_DIR, "mentor_interview_page.ui"), self)
+        # ---------- Load .ui ----------
+        ui_path = os.path.join(BASE_DIR, "ui", "mentor_interview_page.ui")
+        uic.loadUi(ui_path, self)
 
-        # Categories
-        self.categoryComboBox.addItems([
-            "All Categories",
-            "Accepted",
-            "Rejected",
-            "Pending"
-        ])
+        # ---------- Aliases ----------
+        self.search_input = self.searchInput
+        self.all_btn      = self.allConversationsButton
+        self.combo        = self.categoryComboBox
+        self.table        = self.conversationsTable
+        self.status       = self.statusLabel
+        self.return_btn   = self.returnButton
 
-        # Connect buttons
-        self.searchButton.clicked.connect(self.search_conversations)
-        self.allConversations.clicked.connect(self.show_all_conversations)
-        self.categoryComboBox.currentTextChanged.connect(self.filter_by_category)
-        self.returnButton.clicked.connect(self.open_preferences)
+        # ---------- Role badge ----------
+        self.headerBadge.setProperty("admin", "true" if is_admin else "false")
+        self.headerBadge.setText("ADMIN" if is_admin else "USER")
 
-    def search_conversations(self):
-        search_text = self.searchInput.text().lower()
+        # ---------- Signals ----------
+        self.search_input.textChanged.connect(self.render)   # live search
+        self.all_btn.clicked.connect(self.on_all)
+        self.combo.currentTextChanged.connect(self.on_combo_changed)
+        self.return_btn.clicked.connect(self.go_back)
 
-        for row in range(self.conversationsTable.rowCount()):
-            match = False
+        # ---------- Initial load ----------
+        self.load(get_all_conversations)
 
-            for column in range(self.conversationsTable.columnCount()):
-                item = self.conversationsTable.item(row, column)
+    # --------------------------------------------------
+    def load(self, func):
+        self.search_input.blockSignals(True)
+        self.search_input.clear()
+        self.search_input.blockSignals(False)
 
-                if item and search_text in item.text().lower():
-                    match = True
-                    break
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            self.rows = func()
+        finally:
+            QApplication.restoreOverrideCursor()
 
-            self.conversationsTable.setRowHidden(row, not match)
+        self.render()
 
-    def show_all_conversations(self):
-        self.categoryComboBox.setCurrentIndex(0)  # keep combo in sync
-        for row in range(self.conversationsTable.rowCount()):
-            self.conversationsTable.setRowHidden(row, False)
+    def render(self):
+        q = self.search_input.text().strip()
+        rows = (
+            [r for r in self.rows if name_matches(q, r.get(NAME_COL, ""))]
+            if q else self.rows
+        )
 
-    def filter_by_category(self, category):
-        for row in range(self.conversationsTable.rowCount()):
-            category_item = self.conversationsTable.item(row, 3)
+        self.table.setRowCount(0)
+        for row in rows:
+            r = self.table.rowCount()
+            self.table.insertRow(r)
+            for c, col in enumerate(COLS):
+                self.table.setItem(r, c, QTableWidgetItem(str(row.get(col, ""))))
 
-            if category == "All Categories":
-                hidden = False
+        err = get_last_error()
+        if err:
+            self.status.setProperty("error", "true")
+            self.status.setText(f"⚠  {err}")
+        else:
+            self.status.setProperty("error", "false")
+            if q:
+                self.status.setText(
+                    f"{len(rows)} of {len(self.rows)} record(s) match “{q}”"
+                )
             else:
-                hidden = not (category_item and
-                              category_item.text().strip().lower() == category.lower())
-            self.conversationsTable.setRowHidden(row, hidden)
+                self.status.setText(f"{len(rows)} record(s)")
 
-    def open_preferences(self):
-        """Return to the correct Preferences screen (admin or regular)."""
+        self.status.style().unpolish(self.status)
+        self.status.style().polish(self.status)
+
+    # --------------------------------------------------
+    def on_all(self):
+        self.combo.blockSignals(True)
+        self.combo.setCurrentIndex(0)
+        self.combo.blockSignals(False)
+        self.load(lambda: get_all_conversations(refresh=True))
+
+    def on_combo_changed(self, value):
+        if value == "All Recommendations":
+            self.load(get_all_conversations)
+        else:
+            self.load(lambda: get_conversations_by_recommendation(value))
+
+    # --------------------------------------------------
+    def go_back(self):
         if self.is_admin:
             from preferences_admin import PreferencesAdmin
             self.next_window = PreferencesAdmin()
