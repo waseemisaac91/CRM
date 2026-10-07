@@ -27,14 +27,21 @@ crm/
 |-- mentor_interview_page.py     Mentor window
 |-- interviews_page.py           Interviews window
 |-- admin_menu.py                Admin window (calendar + e-mail)
-|-- google_service.py            Drive connection + login check
 |-- services/
 |   |-- google_drive_service.py  spreadsheet IDs + gspread client
 |   |-- sheets_service.py        reads sheets, auto-detects header and columns
 |   |-- data_service.py          search / filter logic for the pages
 |   |-- google_calendar_service.py   Calendar events
 |   `-- email_service.py         sends e-mails
-|-- check_drive.py, debug_calendar.py   connection tests
+|-- tests/                     connection tests
+    |-- check_drive.py,
+    |-- debug_calendar.py
+|-- ui/
+   |--login.ui
+   |-- admin_preferences.ui
+   |--mentor_interview_page.ui
+   |--applications_page.ui
+
 |-- docs/GOOGLE_CONNECTION_GUIDE.md     Drive / Calendar / E-mail setup
 |-- credentials/                 service_account.json (NOT in GitHub)
 |-- .env                         e-mail login (NOT in GitHub)
