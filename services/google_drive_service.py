@@ -41,10 +41,9 @@ SPREADSHEET_IDS = {
     "Mentor":       "1FzIEp4rMKAohYZpjypTP5EAcmVH_xdqsq9QGgksa0GI",
     "Users":        "1pfSX9Zpl4rJcaDAgsD--puvUh8HawT0iaZoYPOWa2-c",
     "Applications": "1kuiyYAiyrX-aLq3rJqH1xobOQ6bcwMT0d3Nl_li_YTM",
-    "VIT1":         "",   # ← paste the VIT1 spreadsheet ID
-    "VIT2":         "",   # ← paste the VIT2 spreadsheet ID
+    "VIT1":"188D93b1oAYpxcahaps0-S8oGUw1BPCJMAvgpkLfVQEs",   # ← paste the VIT1 spreadsheet ID
+    "VIT2":"13f8wtXb2VFkknD3nQjitmFVaPIEt8CgSZDq_zKrmbD4",   # ← paste the VIT2 spreadsheet ID
 }
-
 
 # --------------------------------------------------
 # SCOPES
