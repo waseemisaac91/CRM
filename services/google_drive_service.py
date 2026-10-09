@@ -20,16 +20,34 @@ import hmac
 from google.oauth2.service_account import Credentials
 
 
+ 
+# PATH HELPER — works in dev AND inside exe
+# --------------------------------------------------
+def _resource_path(relative_path):
+    """
+    Get absolute path to a resource.
+    - In dev:    project root (one level above this file)
+    - In exe:    sys._MEIPASS (PyInstaller temp folder)
+    """
+    if getattr(sys, "frozen", False):
+        base = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    else:
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, relative_path)
+
+
+
 # --------------------------------------------------
 # CONFIG
 # --------------------------------------------------
 # Next to the .exe when frozen by PyInstaller, otherwise the project root
-BASE_DIR = (os.path.dirname(sys.executable) if getattr(sys, "frozen", False)
-            else os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+#BASE_DIR = (os.path.dirname(sys.executable) if getattr(sys, "frozen", False)
+ #           else os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-CREDENTIALS_FILE = os.path.join(BASE_DIR, "credentials", "service_account.json")
+CREDENTIALS_FILE = _resource_path(
+    os.path.join("credentials", "service_account.json")
+)
 
-# Alias used by check_drive.py and other tools
 SERVICE_ACCOUNT_FILE = CREDENTIALS_FILE
 
 
@@ -41,8 +59,8 @@ SPREADSHEET_IDS = {
     "Mentor":       "1FzIEp4rMKAohYZpjypTP5EAcmVH_xdqsq9QGgksa0GI",
     "Users":        "1pfSX9Zpl4rJcaDAgsD--puvUh8HawT0iaZoYPOWa2-c",
     "Applications": "1kuiyYAiyrX-aLq3rJqH1xobOQ6bcwMT0d3Nl_li_YTM",
-    "VIT1":         "",   # ← paste the VIT1 spreadsheet ID
-    "VIT2":         "",   # ← paste the VIT2 spreadsheet ID
+    "VIT1":"188D93b1oAYpxcahaps0-S8oGUw1BPCJMAvgpkLfVQEs",   # ← paste the VIT1 spreadsheet ID
+    "VIT2":"13f8wtXb2VFkknD3nQjitmFVaPIEt8CgSZDq_zKrmbD4",   # ← paste the VIT2 spreadsheet ID
 }
 
 
@@ -59,12 +77,21 @@ SCOPES = [
 # AUTH
 # --------------------------------------------------
 def _get_client():
-    """Return an authenticated gspread client."""
+    if not os.path.isfile(CREDENTIALS_FILE):
+        raise FileNotFoundError(
+            f"service_account.json not found at: {CREDENTIALS_FILE}"
+        )
+    try:
+        import certifi
+        os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+        os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+    except ImportError:
+        pass
+
     creds = Credentials.from_service_account_file(
         CREDENTIALS_FILE, scopes=SCOPES
     )
     return gspread.authorize(creds)
-
 
 # Public alias — check_drive.py expects `get_client`
 def get_client():

@@ -1,236 +1,428 @@
 """
-data_service.py - business logic for the Applications, Mentor and
-Interviews pages. Every function reads from Google Drive (gspread) and
-NEVER raises: on failure it returns an empty result and the page can show
-get_last_error().
+data_service.py — Data logic for all pages.
 """
 
-import functools
-
-from services.sheets_services import (
-    read_sheet, pick, norm, make_name_getter, make_email_getter, friendly_error,
+from services.google_drive_service import (
+    fetch_applications,
+    fetch_mentor,
+    fetch_interviews,
+    fetch_vit1,
+    fetch_vit2,
 )
 
-_last_error = ""
+# --------------------------------------------------
+# Error tracking
+# --------------------------------------------------
+_LAST_ERROR = None
 
 
 def get_last_error():
-    return _last_error
+    return _LAST_ERROR
 
 
-def _guard(default_factory):
-    def decorator(fn):
-        @functools.wraps(fn)
-        def wrapper(*args, **kwargs):
-            global _last_error
-            _last_error = ""
-            try:
-                return fn(*args, **kwargs)
-            except Exception as exc:
-                _last_error = friendly_error(exc)
-                return default_factory()
-        return wrapper
-    return decorator
+def _set_error(msg):
+    global _LAST_ERROR
+    _LAST_ERROR = msg
+
+
+def _clear_error():
+    global _LAST_ERROR
+    _LAST_ERROR = None
+
+
+# --------------------------------------------------
+# Name helpers
+# --------------------------------------------------
+def _normalise_name(value):
+    if value is None:
+        return ""
+    return str(value).strip().lower()
+
+
+def _find_name_column(record):
+    if not record:
+        return None
+    keys_lower = {k.lower(): k for k in record.keys()}
+    for candidate in ("full name", "candidate name", "name", "applicant"):
+        if candidate in keys_lower:
+            return keys_lower[candidate]
+    if "first name" in keys_lower and "last name" in keys_lower:
+        return ("__combined__",
+                keys_lower["first name"],
+                keys_lower["last name"])
+    return None
+
+
+def _get_name(record):
+    col = _find_name_column(record)
+    if col is None:
+        return ""
+    if isinstance(col, tuple):
+        _, first_k, last_k = col
+        first = str(record.get(first_k, "") or "").strip()
+        last = str(record.get(last_k, "") or "").strip()
+        return f"{first} {last}".strip()
+    return str(record.get(col, "") or "").strip()
 
 
 def name_matches(query, name):
-    """'As' matches 'Asma Ali' and 'Ali Asaad' (start of any word)."""
-    q = norm(query)
-    return bool(q) and (" " + q) in (" " + norm(name))
+    """True if any word in `name` starts with `query` (case-insensitive)."""
+    if not query:
+        return True
+    if not name:
+        return False
+    q = query.strip().lower()
+    for word in str(name).lower().split():
+        if word.startswith(q):
+            return True
+    return False
 
 
-# =========================================================== INTERVIEWS
-INTERVIEW_COLS = ["Full Name", "Project Sent Date", "Project Received Date"]
+def _header_and_rows(records):
+    if not records:
+        return [], []
+    headers = list(records[0].keys())
+    rows = [dict(r) for r in records]
+    return headers, rows
 
 
-def _interviews(refresh=False):
-    headers, rows = read_sheet("interviews", force=refresh)
-    name = make_name_getter(headers)
-    sent = pick(headers, "project sent date", "project sent", "sent")
-    recv = pick(headers, "project received date", "project received", "received")
-    return [{
-        "Full Name": name(r),
-        "Project Sent Date": r.get(sent, "") if sent else "",
-        "Project Received Date": r.get(recv, "") if recv else "",
-    } for r in rows]
+# --------------------------------------------------
+# De-duplication helper
+# --------------------------------------------------
+def _dedupe(rows, keys=("email", "full name")):
+    """
+    Remove duplicate rows by looking at the given column names
+    (case-insensitive, in priority order). Keeps the first occurrence.
 
+    If none of the requested columns exist, falls back to comparing
+    the whole row as a tuple.
 
-_NO = {"", "no", "false", "0", "-", "none", "n/a", "na", "not sent",
-       "not received", "not defined", "not identified", "undefined"}
+    NOTE: 'timestamp' is intentionally NOT part of the default key,
+    so rows that differ only by timestamp are still considered duplicates.
+    """
+    if not rows:
+        return []
 
+    # Find the real column names present in the data
+    lower_map = {k.lower(): k for k in rows[0].keys()}
+    chosen = [lower_map[w] for w in keys if w in lower_map]
 
-def _is_yes(value):
-    return norm(value) not in _NO
+    seen = set()
+    unique = []
 
-
-@_guard(list)
-def get_all_interviews(refresh=False):
-    return _interviews(refresh)
-
-
-@_guard(list)
-def search_interviews(q):
-    return [r for r in _interviews() if name_matches(q, r["Full Name"])]
-
-
-@_guard(list)
-def get_projects_sent():
-    return [r for r in _interviews() if _is_yes(r["Project Sent Date"])]
-
-
-@_guard(list)
-def get_projects_received():
-    return [r for r in _interviews() if _is_yes(r["Project Received Date"])]
-
-
-# =========================================================== MENTOR
-MENTOR_COLS = ["Date", "VIT Group", "Candidate Name", "Mentor Name",
-               "Score", "Recommendation", "Secondary Score", "Notes"]
-
-_MENTOR_ALIASES = {
-    "Date": ("date",),
-    "VIT Group": ("vit group", "vit", "group"),
-    "Mentor Name": ("mentor name", "mentor"),
-    "Score": ("score",),
-    "Recommendation": ("recommendation", "suitab"),
-    "Secondary Score": ("secondary score", "second score", "score 2"),
-    "Notes": ("notes", "note", "comment"),
-}
-
-
-def _mentor(refresh=False):
-    headers, rows = read_sheet("mentor", force=refresh)
-    name = make_name_getter(headers)
-    cols = {c: pick(headers, *keys) for c, keys in _MENTOR_ALIASES.items()}
-    out = []
     for r in rows:
-        item = {c: (r.get(h, "") if h else "") for c, h in cols.items()}
-        item["Candidate Name"] = name(r)
-        out.append(item)
-    return out
+        if chosen:
+            key = tuple(
+                str(r.get(col, "") or "").strip().lower()
+                for col in chosen
+            )
+        else:
+            key = tuple(
+                str(v).strip().lower() for v in r.values()
+            )
 
-
-def _clean(text):
-    return norm(text).rstrip(".")
-
-
-@_guard(list)
-def get_all_conversations(refresh=False):
-    return _mentor(refresh)
-
-
-@_guard(list)
-def search_conversations(q):
-    return [r for r in _mentor() if name_matches(q, r["Candidate Name"])]
-
-
-@_guard(list)
-def get_conversations_by_recommendation(value):
-    wanted = _clean(value)
-    return [r for r in _mentor() if _clean(r["Recommendation"]) == wanted]
-
-
-# =========================================================== APPLICATIONS
-# Every function returns (headers, rows) so the table can show any columns.
-
-def _app_key(row, name, email):
-    return (norm(name(row)), email(row))
-
-
-@_guard(lambda: ([], []))
-def get_applications(refresh=False):
-    return read_sheet("applications", force=refresh)
-
-
-@_guard(lambda: ([], []))
-def search_applications(q):
-    headers, rows = read_sheet("applications")
-    name = make_name_getter(headers)
-    return headers, [r for r in rows if name_matches(q, name(r))]
-
-
-def _mentor_split(defined):
-    headers, rows = read_sheet("applications")
-    col = pick(headers, "mentor meeting", "mentor", "meeting")
-    if not col:
-        raise KeyError("No 'Mentor meeting' column found in the Applications file.")
-    return headers, [r for r in rows if _is_yes(r.get(col, "")) == defined]
-
-
-@_guard(lambda: ([], []))
-def get_mentor_defined():
-    return _mentor_split(True)
-
-
-@_guard(lambda: ([], []))
-def get_mentor_not_defined():
-    return _mentor_split(False)
-
-
-@_guard(lambda: ([], []))
-def get_duplicate_applications():
-    """Only the people registered more than once (same name + e-mail)."""
-    headers, rows = read_sheet("applications")
-    name, email = make_name_getter(headers), make_email_getter(headers)
-    counts = {}
-    for r in rows:
-        k = _app_key(r, name, email)
-        counts[k] = counts.get(k, 0) + 1
-    dup = [r for r in rows
-           if _app_key(r, name, email)[0] and counts[_app_key(r, name, email)] > 1]
-    dup.sort(key=lambda r: _app_key(r, name, email))
-    return headers, dup
-
-
-@_guard(lambda: ([], []))
-def get_unique_applications():
-    """Duplicates removed: each person (name + e-mail) appears once."""
-    headers, rows = read_sheet("applications")
-    name, email = make_name_getter(headers), make_email_getter(headers)
-    seen, out = set(), []
-    for r in rows:
-        k = _app_key(r, name, email)
-        if k[0] and k in seen:
+        if key in seen:
             continue
-        seen.add(k)
-        out.append(r)
-    return headers, out
+        seen.add(key)
+        unique.append(r)
+
+    return unique
 
 
-def _vit_people():
+# --------------------------------------------------
+# Applications
+# --------------------------------------------------
+def get_applications():
+    _clear_error()
+    try:
+        records = fetch_applications()
+        headers, rows = _header_and_rows(records)
+        rows = _dedupe(rows)
+        return headers, rows
+    except Exception as exc:
+        _set_error(f"Could not read Applications: {exc}")
+        return [], []
+
+
+def search_applications(query):
+    headers, rows = get_applications()
+    if not query:
+        return headers, rows
+    filtered = [r for r in rows if name_matches(query, _get_name(r))]
+    return headers, filtered
+
+
+def get_mentor_defined():
+    headers, rows = get_applications()
+    filtered = []
+    for r in rows:
+        val = ""
+        for k in r.keys():
+            if "mentor" in k.lower() and "meeting" in k.lower():
+                val = str(r[k] or "").strip()
+                break
+        if val and val.lower() not in ("no", "none", "false", "0"):
+            filtered.append(r)
+    return headers, _dedupe(filtered)
+
+
+def get_mentor_not_defined():
+    headers, rows = get_applications()
+    filtered = []
+    for r in rows:
+        val = ""
+        for k in r.keys():
+            if "mentor" in k.lower() and "meeting" in k.lower():
+                val = str(r[k] or "").strip()
+                break
+        if not val or val.lower() in ("no", "none", "false", "0"):
+            filtered.append(r)
+    return headers, _dedupe(filtered)
+
+
+# --------------------------------------------------
+# Duplicates / Unique
+# --------------------------------------------------
+def get_duplicate_applications():
+    """
+    Rows where (name + email) appear more than once.
+    Intentionally NOT de-duplicated — duplicates are the point here.
+    """
+    headers, rows = get_applications()
+
+    email_col = None
+    if rows:
+        for k in rows[0].keys():
+            if "email" in k.lower() or "mail" in k.lower():
+                email_col = k
+                break
+
+    if email_col is None:
+        return headers, []
+
+    from collections import Counter
+    keys = [
+        (_normalise_name(_get_name(r)), _normalise_name(r.get(email_col, "")))
+        for r in rows
+    ]
+    counts = Counter(keys)
+    filtered = [r for r, k in zip(rows, keys) if counts[k] > 1]
+    return headers, filtered
+
+
+def get_unique_applications():
+    """Remove duplicates by name (first occurrence kept)."""
+    headers, rows = get_applications()
+    seen = set()
+    filtered = []
+    for r in rows:
+        key = _normalise_name(_get_name(r))
+        if key and key not in seen:
+            seen.add(key)
+            filtered.append(r)
+    return headers, filtered
+
+
+# --------------------------------------------------
+# VIT helpers
+# --------------------------------------------------
+def _names_set(records):
+    """Set of normalised names from records."""
+    return {_normalise_name(_get_name(r)) for r in records if _get_name(r)}
+
+
+def _record_by_name(records):
+    """Map normalised name → first record with that name."""
     result = {}
-    for key, label in (("vit1", "VIT1"), ("vit2", "VIT2")):
-        headers, rows = read_sheet(key)
-        name = make_name_getter(headers)
-        result[label] = (headers, rows, name)
+    for r in records:
+        key = _normalise_name(_get_name(r))
+        if key and key not in result:
+            result[key] = r
     return result
 
 
-@_guard(lambda: ([], []))
+# --------------------------------------------------
+# Previous VIT Check
+#   Rule: Applications ∩ (VIT1 ∪ VIT2)
+# --------------------------------------------------
 def get_previous_vit():
-    """Applicants who also appear in VIT1 and/or VIT2."""
-    headers, rows = read_sheet("applications")
-    name = make_name_getter(headers)
-    vit = _vit_people()
-    names = {lbl: {norm(n(r)) for r in rs if n(r)} for lbl, (_, rs, n) in vit.items()}
-    out = []
-    for r in rows:
-        key = norm(name(r))
-        found = [lbl for lbl, s in names.items() if key and key in s]
-        if found:
-            out.append({**r, "Found In": " + ".join(found)})
-    return headers + ["Found In"], out
+    _clear_error()
+
+    headers, apps = get_applications()
+
+    errors = []
+    try:
+        vit1 = fetch_vit1()
+    except Exception as exc:
+        vit1 = []
+        errors.append(f"VIT1: {exc}")
+
+    try:
+        vit2 = fetch_vit2()
+    except Exception as exc:
+        vit2 = []
+        errors.append(f"VIT2: {exc}")
+
+    if errors:
+        _set_error(" | ".join(errors))
+        return [], []
+
+    if not vit1 and not vit2:
+        _set_error("VIT1 and VIT2 returned no rows.")
+        return [], []
+
+    vit1_names = _names_set(vit1)
+    vit2_names = _names_set(vit2)
+
+    filtered = []
+    for r in apps:
+        name = _normalise_name(_get_name(r))
+        in_vit1 = name in vit1_names
+        in_vit2 = name in vit2_names
+
+        if in_vit1 or in_vit2:
+            found_in = []
+            if in_vit1:
+                found_in.append("VIT1")
+            if in_vit2:
+                found_in.append("VIT2")
+            r_copy = dict(r)
+            r_copy["Found In"] = " + ".join(found_in)
+            filtered.append(r_copy)
+
+    new_headers = list(headers) + ["Found In"]
+    return new_headers, _dedupe(filtered)
 
 
-@_guard(lambda: ([], []))
+# --------------------------------------------------
+# Different Record
+#   Rule: (VIT1 \ VIT2) ∪ (VIT2 \ VIT1)
+# --------------------------------------------------
 def get_different_records():
-    """Candidates that are NOT common to VIT1 and VIT2 (only in one of them)."""
-    vit = _vit_people()
-    names = {lbl: {norm(n(r)) for r in rs if n(r)} for lbl, (_, rs, n) in vit.items()}
-    common = names["VIT1"] & names["VIT2"]
+    _clear_error()
 
-    headers, out = ["VIT"], []
-    for lbl, (hs, rs, n) in vit.items():
-        headers += [h for h in hs if h not in headers]
-        out += [{"VIT": lbl, **r} for r in rs if norm(n(r)) not in common]
-    return headers, out
+    errors = []
+    try:
+        vit1 = fetch_vit1()
+    except Exception as exc:
+        errors.append(f"VIT1: {exc}")
+        vit1 = []
+
+    try:
+        vit2 = fetch_vit2()
+    except Exception as exc:
+        errors.append(f"VIT2: {exc}")
+        vit2 = []
+
+    if errors:
+        _set_error(" | ".join(errors))
+        return [], []
+
+    vit1_by_name = _record_by_name(vit1)
+    vit2_by_name = _record_by_name(vit2)
+
+    only_vit1 = set(vit1_by_name) - set(vit2_by_name)
+    only_vit2 = set(vit2_by_name) - set(vit1_by_name)
+
+    result = []
+    used_headers = None
+
+    for name in only_vit1:
+        r = vit1_by_name[name]
+        r_copy = dict(r)
+        r_copy["VIT"] = "VIT1 only"
+        if used_headers is None:
+            used_headers = list(r.keys())
+        result.append(r_copy)
+
+    for name in only_vit2:
+        r = vit2_by_name[name]
+        r_copy = dict(r)
+        r_copy["VIT"] = "VIT2 only"
+        if used_headers is None:
+            used_headers = list(r.keys())
+        result.append(r_copy)
+
+    if used_headers is None:
+        return [], []
+    return used_headers + ["VIT"], _dedupe(result)
+
+
+# --------------------------------------------------
+# Mentor
+# --------------------------------------------------
+def get_all_conversations(refresh=False):
+    _clear_error()
+    try:
+        records = fetch_mentor()
+        headers, rows = _header_and_rows(records)
+        rows = _dedupe(rows)
+        return headers, rows
+    except Exception as exc:
+        _set_error(f"Could not read Mentor: {exc}")
+        return [], []
+
+
+def search_conversations(query):
+    headers, rows = get_all_conversations()
+    if not query:
+        return headers, rows
+    return headers, [r for r in rows if name_matches(query, _get_name(r))]
+
+
+def get_conversations_by_recommendation(value):
+    headers, rows = get_all_conversations()
+    if not value or value == "All Recommendations":
+        return headers, rows
+    filtered = []
+    for r in rows:
+        for k in r.keys():
+            if "recommend" in k.lower():
+                if value.lower() in str(r[k]).lower():
+                    filtered.append(r)
+                    break
+    return headers, _dedupe(filtered)
+
+
+# --------------------------------------------------
+# Interviews
+# --------------------------------------------------
+def get_all_interviews(refresh=False):
+    _clear_error()
+    try:
+        records = fetch_interviews()
+        headers, rows = _header_and_rows(records)
+        rows = _dedupe(rows)
+        return headers, rows
+    except Exception as exc:
+        _set_error(f"Could not read Interviews: {exc}")
+        return [], []
+
+
+def search_interviews(query):
+    headers, rows = get_all_interviews()
+    if not query:
+        return headers, rows
+    return headers, [r for r in rows if name_matches(query, _get_name(r))]
+
+
+def get_projects_sent():
+    headers, rows = get_all_interviews()
+    filtered = []
+    for r in rows:
+        for k in r.keys():
+            if "sent" in k.lower() and str(r[k]).strip():
+                filtered.append(r)
+                break
+    return headers, _dedupe(filtered)
+
+
+def get_projects_received():
+    headers, rows = get_all_interviews()
+    filtered = []
+    for r in rows:
+        for k in r.keys():
+            if "received" in k.lower() and str(r[k]).strip():
+                filtered.append(r)
+                break
+    return headers, _dedupe(filtered)

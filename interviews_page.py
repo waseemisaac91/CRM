@@ -89,15 +89,25 @@ class InterviewsPage(QWidget):
         self.search_input.blockSignals(False)
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            self.rows = func()
+            headers, rows = func()  
+            self.rows = rows
         finally:
             QApplication.restoreOverrideCursor()
         self.render()
 
     def render(self):
         q = self.search_input.text().strip()
-        rows = [r for r in self.rows if name_matches(q, r.get(NAME_COL, ""))] if q else self.rows
+
+        # ضمان أن self.rows هي قائمة قواميس فقط
+        rows = self.rows
+        if isinstance(rows, tuple):
+            rows = rows[1]  # خذ الجزء الثاني (rows) من (headers, rows)
+
+        if q:
+            rows = [r for r in rows if name_matches(q, r.get(NAME_COL, ""))]
+
         populate(self.table, COLS, rows)
+
         err = get_last_error()
         if err:
             set_status(self.status, f"⚠  {err}", True)

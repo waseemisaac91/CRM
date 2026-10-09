@@ -6,6 +6,7 @@ Search filters the loaded rows instantly (names STARTING with typed letters).
 """
 
 import os
+import sys
 from PyQt6 import uic
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -17,7 +18,13 @@ from services.data_service import (
     get_last_error, name_matches,
 )
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+def _resource_path(relative_path):
+    if getattr(sys, "frozen", False):
+        base = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    else:
+        base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, relative_path)
 
 COLS = [
     "Date", "VIT Group", "Candidate Name", "Mentor Name",
@@ -33,7 +40,9 @@ class MentorInterviewPage(QWidget):
         self.rows = []
 
         # ---------- Load .ui ----------
-        ui_path = os.path.join(BASE_DIR, "ui", "mentor_interview_page.ui")
+        ui_path = _resource_path(
+            os.path.join("ui", "mentor_interview_page.ui")
+        )
         uic.loadUi(ui_path, self)
 
         # ---------- Aliases ----------
@@ -65,7 +74,8 @@ class MentorInterviewPage(QWidget):
 
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            self.rows = func()
+            headers, rows = func()
+            self.rows = rows
         finally:
             QApplication.restoreOverrideCursor()
 
@@ -73,10 +83,13 @@ class MentorInterviewPage(QWidget):
 
     def render(self):
         q = self.search_input.text().strip()
-        rows = (
-            [r for r in self.rows if name_matches(q, r.get(NAME_COL, ""))]
-            if q else self.rows
-        )
+
+        rows = self.rows                # ← FIX: حماية دفاعية
+        if isinstance(rows, tuple):
+            rows = rows[1]
+
+        if q:
+            rows = [r for r in rows if name_matches(q, r.get(NAME_COL, ""))]
 
         self.table.setRowCount(0)
         for row in rows:
