@@ -177,7 +177,7 @@ QLabel#lblForgot:hover {
       <item>
        <widget class="QLabel" name="lblLogo">
         <property name="text">
-         <string>WER:HERE</string>
+         <string>WerHere</string>
         </property>
         <property name="alignment">
          <set>Qt::AlignCenter</set>

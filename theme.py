@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView, QApplication, QFrame, QHBoxLayout, QHeaderView, QLabel,
     QPushButton, QTableWidgetItem, QVBoxLayout, QWidget,
 )
+from PyQt6.QtGui import QPalette, QColor, QLinearGradient, QBrush
 
 PALETTE = {
     "bg": "#0b1220",            # window
@@ -147,7 +148,9 @@ QMessageBox QLabel { color: @text; }
 """
 
 _LOGIN_QSS = """
-QWidget#LoginWindow {
+QWidget#LoginWindow,
+QWidget#PreferencesMenu,
+QWidget#AdminPreferences {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 @bg, stop:1 @bg2);
 }
 QWidget { color: @text; font-family: "Segoe UI", "Inter", Arial, sans-serif; }
@@ -186,7 +189,6 @@ QPushButton#btnExit {
 QPushButton#btnExit:hover { border-color: @danger; color: @danger; }
 QLabel#lblForgot { color: @muted; font-size: 12px; }
 """
-
 
 def _render(template):
     return re.sub(r"@(\w+)", lambda m: PALETTE[m.group(1)], template)
@@ -314,3 +316,17 @@ def populate(table, headers, rows, max_col=280):
         for c in range(len(headers)):
             table.setColumnWidth(c, min(max(table.columnWidth(c), 110), max_col))
     table.setUpdatesEnabled(True)
+
+    
+
+
+def paint_dark_background(widget):
+    """Force the CRM dark gradient background on any top-level widget."""
+    pal = widget.palette()
+    grad = QLinearGradient(0, 0, 1, 1)
+    grad.setCoordinateMode(QLinearGradient.CoordinateMode.ObjectBoundingMode)
+    grad.setColorAt(0.0, QColor(PALETTE["bg"]))
+    grad.setColorAt(1.0, QColor(PALETTE["bg2"]))
+    pal.setBrush(QPalette.ColorRole.Window, QBrush(grad))
+    widget.setAutoFillBackground(True)
+    widget.setPalette(pal)

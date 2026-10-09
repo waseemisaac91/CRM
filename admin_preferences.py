@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'admin_preferences.ui'
+# Form implementation generated from reading ui file 'ui/admin_preferences.ui'
 #
 # Created by: PyQt6 UI code generator 6.6.1
 #
@@ -14,104 +14,6 @@ class Ui_AdminPreferences(object):
         AdminPreferences.setObjectName("AdminPreferences")
         AdminPreferences.resize(620, 620)
         AdminPreferences.setMinimumSize(QtCore.QSize(520, 560))
-        AdminPreferences.setStyleSheet("QWidget#AdminPreferences {\n"
-"    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,\n"
-"        stop:0 #eef1f5, stop:0.5 #dde3ea, stop:1 #c9d1da);\n"
-"}\n"
-"\n"
-"/* ---------- Logo ---------- */\n"
-"QLabel#lblLogo {\n"
-"    font-size: 36px;\n"
-"    font-weight: 800;\n"
-"    color: #37474f;\n"
-"    letter-spacing: 4px;\n"
-"}\n"
-"\n"
-"QLabel#lblLogoAccent {\n"
-"    color: #e53935;\n"
-"    font-weight: 800;\n"
-"    font-size: 36px;\n"
-"    letter-spacing: 4px;\n"
-"}\n"
-"\n"
-"/* ---------- Red title bar ---------- */\n"
-"QFrame#frmTitle {\n"
-"    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0,\n"
-"        stop:0 #e53935, stop:1 #ff5252);\n"
-"    border-radius: 6px;\n"
-"    min-height: 38px;\n"
-"    max-height: 38px;\n"
-"}\n"
-"\n"
-"QLabel#lblTitle {\n"
-"    color: #ffffff;\n"
-"    font-size: 14px;\n"
-"    font-weight: bold;\n"
-"    letter-spacing: 1px;\n"
-"    padding-left: 12px;\n"
-"    padding-right: 12px;\n"
-"}\n"
-"\n"
-"/* ---------- Main card ---------- */\n"
-"QFrame#frmMenu {\n"
-"    background-color: rgba(255, 255, 255, 0.55);\n"
-"    border: 1px solid rgba(255, 255, 255, 0.85);\n"
-"    border-radius: 18px;\n"
-"}\n"
-"\n"
-"/* ---------- Buttons ---------- */\n"
-"QPushButton {\n"
-"    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,\n"
-"        stop:0 #ffffff, stop:1 #e6e9ee);\n"
-"    color: #263238;\n"
-"    border: 1px solid #b0bec5;\n"
-"    border-radius: 8px;\n"
-"    font-size: 13px;\n"
-"    font-weight: bold;\n"
-"    padding: 12px 16px;\n"
-"    min-height: 42px;\n"
-"    text-align: center;\n"
-"}\n"
-"QPushButton:hover {\n"
-"    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,\n"
-"        stop:0 #e3f2fd, stop:1 #bbdefb);\n"
-"    border: 1px solid #64b5f6;\n"
-"    color: #0d47a1;\n"
-"}\n"
-"QPushButton:pressed {\n"
-"    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,\n"
-"        stop:0 #bbdefb, stop:1 #90caf9);\n"
-"}\n"
-"QPushButton:focus {\n"
-"    border: 2px solid #42a5f5;\n"
-"}\n"
-"\n"
-"/* ---------- Admin (highlighted) ---------- */\n"
-"QPushButton#btnAdmin {\n"
-"    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,\n"
-"        stop:0 #ef5350, stop:1 #e53935);\n"
-"    color: #ffffff;\n"
-"    border: 1px solid #c62828;\n"
-"}\n"
-"QPushButton#btnAdmin:hover {\n"
-"    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,\n"
-"        stop:0 #ff6659, stop:1 #d32f2f);\n"
-"}\n"
-"QPushButton#btnAdmin:pressed {\n"
-"    background: #c62828;\n"
-"}\n"
-"\n"
-"/* ---------- Exit button ---------- */\n"
-"QPushButton#btnExit {\n"
-"    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,\n"
-"        stop:0 #607d8b, stop:1 #455a64);\n"
-"    color: #ffffff;\n"
-"    border: 1px solid #37474f;\n"
-"}\n"
-"QPushButton#btnExit:hover {\n"
-"    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,\n"
-"        stop:0 #78909c, stop:1 #546e7a);\n"
-"}")
         self.rootLayout = QtWidgets.QVBoxLayout(AdminPreferences)
         self.rootLayout.setContentsMargins(30, 25, 30, 25)
         self.rootLayout.setSpacing(14)
@@ -123,7 +25,6 @@ class Ui_AdminPreferences(object):
         self.lblAvatar.setMinimumSize(QtCore.QSize(70, 70))
         self.lblAvatar.setMaximumSize(QtCore.QSize(70, 70))
         self.lblAvatar.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.lblAvatar.setStyleSheet("font-size: 52px; color: #e53935;")
         self.lblAvatar.setObjectName("lblAvatar")
         self.rowLogo.addWidget(self.lblAvatar)
         self.lblLogoText = QtWidgets.QLabel(parent=AdminPreferences)
@@ -186,7 +87,7 @@ class Ui_AdminPreferences(object):
         _translate = QtCore.QCoreApplication.translate
         AdminPreferences.setWindowTitle(_translate("AdminPreferences", "Admin Preference Menu"))
         self.lblAvatar.setText(_translate("AdminPreferences", "👤"))
-        self.lblLogoText.setText(_translate("AdminPreferences", "<html><head/><body><p><span style=\"font-size:36pt; font-weight:800; color:#37474f; letter-spacing:4px;\">WER</span><span style=\"font-size:36pt; font-weight:800; color:#e53935; letter-spacing:4px;\">:</span><span style=\"font-size:36pt; font-weight:800; color:#37474f; letter-spacing:4px;\">HERE</span></p></body></html>"))
+        self.lblLogoText.setText(_translate("AdminPreferences", "WerHere"))
         self.lblTitle.setText(_translate("AdminPreferences", "CRM — Admin Preference Menu"))
         self.btnApplications.setText(_translate("AdminPreferences", "📄   Applications"))
         self.btnMentorInterview.setText(_translate("AdminPreferences", "🎓   Mentor Interview"))

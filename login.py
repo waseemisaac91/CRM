@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'login.ui'
+# Form implementation generated from reading ui file 'ui/login.ui'
 #
 # Created by: PyQt6 UI code generator 6.6.1
 #
@@ -202,7 +202,7 @@ class Ui_LoginWindow(object):
     def retranslateUi(self, LoginWindow):
         _translate = QtCore.QCoreApplication.translate
         LoginWindow.setWindowTitle(_translate("LoginWindow", "CRM Login"))
-        self.lblLogo.setText(_translate("LoginWindow", "WER:HERE"))
+        self.lblLogo.setText(_translate("LoginWindow", "WerHere"))
         self.lblSubtitle.setText(_translate("LoginWindow", "Customer Relationship Management"))
         self.lblUser.setText(_translate("LoginWindow", "USERNAME"))
         self.txtUsername.setPlaceholderText(_translate("LoginWindow", "Enter your username"))
