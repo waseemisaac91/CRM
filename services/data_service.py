@@ -103,7 +103,6 @@ def _dedupe(rows, keys=("email", "full name")):
     if not rows:
         return []
 
-    # Find the real column names present in the data
     lower_map = {k.lower(): k for k in rows[0].keys()}
     chosen = [lower_map[w] for w in keys if w in lower_map]
 
@@ -130,7 +129,7 @@ def _dedupe(rows, keys=("email", "full name")):
 
 
 # --------------------------------------------------
-# Applications
+# Applications — normal (de-duplicated) view
 # --------------------------------------------------
 def get_applications():
     _clear_error()
@@ -139,6 +138,21 @@ def get_applications():
         headers, rows = _header_and_rows(records)
         rows = _dedupe(rows)
         return headers, rows
+    except Exception as exc:
+        _set_error(f"Could not read Applications: {exc}")
+        return [], []
+
+
+# --------------------------------------------------
+# Applications — RAW view (no de-duplication)
+#   Needed for "Repeated Registration" and "Application Filter".
+# --------------------------------------------------
+def _get_applications_raw():
+    """Return ALL rows without de-duplication."""
+    _clear_error()
+    try:
+        records = fetch_applications()
+        return _header_and_rows(records)   # no _dedupe() here
     except Exception as exc:
         _set_error(f"Could not read Applications: {exc}")
         return [], []
@@ -186,10 +200,11 @@ def get_mentor_not_defined():
 def get_duplicate_applications():
     """
     Rows where (name + email) appear more than once.
-    Intentionally NOT de-duplicated — duplicates are the point here.
+    Uses RAW data (no de-duplication) so duplicates remain visible.
     """
-    headers, rows = get_applications()
+    headers, rows = _get_applications_raw()
 
+    # Find the email column (case-insensitive)
     email_col = None
     if rows:
         for k in rows[0].keys():
@@ -201,6 +216,7 @@ def get_duplicate_applications():
         return headers, []
 
     from collections import Counter
+
     keys = [
         (_normalise_name(_get_name(r)), _normalise_name(r.get(email_col, "")))
         for r in rows
@@ -211,8 +227,12 @@ def get_duplicate_applications():
 
 
 def get_unique_applications():
-    """Remove duplicates by name (first occurrence kept)."""
-    headers, rows = get_applications()
+    """
+    Same as get_applications() but built from raw data
+    so the result is truly unique (not just re-fetched).
+    """
+    headers, rows = _get_applications_raw()
+
     seen = set()
     filtered = []
     for r in rows:
