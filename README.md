@@ -27,15 +27,19 @@ crm/
 |-- mentor_interview_page.py     Mentor window
 |-- interviews_page.py           Interviews window
 |-- admin_menu.py                Admin window (calendar + e-mail)
-|-- google_service.py            Drive connection + login check
+|-- export_data.py           Export Data to Json Files
 |-- services/
 |   |-- google_drive_service.py  spreadsheet IDs + gspread client
 |   |-- sheets_service.py        reads sheets, auto-detects header and columns
 |   |-- data_service.py          search / filter logic for the pages
 |   |-- google_calendar_service.py   Calendar events
 |   `-- email_service.py         sends e-mails
-|-- check_drive.py, debug_calendar.py   connection tests
-|-- docs/GOOGLE_CONNECTION_GUIDE.md     Drive / Calendar / E-mail setup
+|-- tests/
+    |-- check_drive.py,
+    |-- debug_calendar.py   connection tests
+|-- docs/
+    |-- GOOGLE_CONNECTION_GUIDE.md     Drive / Calendar / E-mail setup
+    |--TRELLO_PLAN.md
 |-- credentials/                 service_account.json (NOT in GitHub)
 |-- .env                         e-mail login (NOT in GitHub)
 `-- requirements.txt
